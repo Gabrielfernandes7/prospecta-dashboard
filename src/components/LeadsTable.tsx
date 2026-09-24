@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Niche, SolutionType } from '@prisma/client';
 import LeadModal from './LeadModal';
+import { ExternalLink } from 'lucide-react';
 
 interface Lead {
   id: string;
@@ -163,14 +165,16 @@ export default function LeadsTable({
               leads.map(lead => (
                 <tr
                   key={lead.id}
-                  className="border-b border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors dark:border-slate-700 dark:hover:bg-slate-800"
-                  onClick={() => {
-                    setEditingId(lead.id);
-                    setIsModalOpen(true);
-                  }}
+                  className="border-b border-slate-200 hover:bg-slate-50 transition-colors dark:border-slate-700 dark:hover:bg-slate-800"
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900 dark:text-white">{lead.name}</div>
+                    <Link
+                      href={`/leads/${lead.id}`}
+                      className="font-medium text-slate-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400 transition-colors flex items-center gap-2"
+                    >
+                      {lead.name}
+                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100" />
+                    </Link>
                     <a
                       href={lead.instagramUrl || '#'}
                       target="_blank"
@@ -192,7 +196,14 @@ export default function LeadsTable({
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{lead.solutionType?.name || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${stageColors[lead.stage]}`}>
+                    <span
+                      className={`inline-flex px-2 py-1 rounded-md text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${stageColors[lead.stage]}`}
+                      onClick={e => {
+                        e.stopPropagation();
+                        setEditingId(lead.id);
+                        setIsModalOpen(true);
+                      }}
+                    >
                       {stageLabels[lead.stage]}
                     </span>
                   </td>
