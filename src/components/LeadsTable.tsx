@@ -84,20 +84,20 @@ export default function LeadsTable({
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:bg-slate-900 dark:border-slate-700">
       {/* Filters */}
-      <div className="p-4 grid gap-3 md:grid-cols-4 border-b border-border">
+      <div className="p-4 grid gap-3 md:grid-cols-4 border-b border-slate-200 dark:border-slate-700">
         <input
           type="text"
           placeholder="Buscar por nome, @ ou nota..."
           value={filters.search}
           onChange={e => onFiltersChange({ ...filters, search: e.target.value })}
-          className="h-9 px-3 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/20"
+          className="h-9 px-3 rounded-md border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20 dark:bg-slate-800 dark:border-slate-600 dark:text-white dark:focus:ring-white/20"
         />
         <select
           value={filters.niche}
           onChange={e => onFiltersChange({ ...filters, niche: e.target.value })}
-          className="h-9 px-3 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/20"
+          className="h-9 px-3 rounded-md border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20 dark:bg-slate-800 dark:border-slate-600 dark:text-white dark:focus:ring-white/20"
         >
           <option value="">Todos os nichos</option>
           {niches.map(n => (
@@ -109,7 +109,7 @@ export default function LeadsTable({
         <select
           value={filters.stage}
           onChange={e => onFiltersChange({ ...filters, stage: e.target.value })}
-          className="h-9 px-3 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/20"
+          className="h-9 px-3 rounded-md border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20 dark:bg-slate-800 dark:border-slate-600 dark:text-white dark:focus:ring-white/20"
         >
           <option value="">Todas as etapas</option>
           {STAGES.map(s => (
@@ -121,7 +121,7 @@ export default function LeadsTable({
         <select
           value={filters.solution}
           onChange={e => onFiltersChange({ ...filters, solution: e.target.value })}
-          className="h-9 px-3 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/20"
+          className="h-9 px-3 rounded-md border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20 dark:bg-slate-800 dark:border-slate-600 dark:text-white dark:focus:ring-white/20"
         >
           <option value="">Todas as soluções</option>
           {solutions.map(s => (
@@ -135,27 +135,27 @@ export default function LeadsTable({
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-secondary">
-            <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left font-medium text-secondary-foreground">Lead</th>
-              <th className="px-4 py-3 text-left font-medium text-secondary-foreground">Nicho</th>
-              <th className="px-4 py-3 text-left font-medium text-secondary-foreground">Solução</th>
-              <th className="px-4 py-3 text-left font-medium text-secondary-foreground">Etapa</th>
-              <th className="px-4 py-3 text-left font-medium text-secondary-foreground">1º contato</th>
-              <th className="px-4 py-3 text-left font-medium text-secondary-foreground">Proposto</th>
-              <th className="px-4 py-3 text-left font-medium text-secondary-foreground">Vendido</th>
+          <thead className="bg-slate-50 dark:bg-slate-800">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              <th className="px-4 py-3 text-left font-medium text-slate-900 dark:text-white">Lead</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-900 dark:text-white">Nicho</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-900 dark:text-white">Solução</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-900 dark:text-white">Etapa</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-900 dark:text-white">1º contato</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-900 dark:text-white">Proposto</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-900 dark:text-white">Vendido</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                <td colSpan={7} className="text-center py-8 text-slate-600 dark:text-slate-400">
                   Carregando...
                 </td>
               </tr>
             ) : leads.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                <td colSpan={7} className="text-center py-8 text-slate-600 dark:text-slate-400">
                   Nenhum lead encontrado
                 </td>
               </tr>
@@ -163,20 +163,20 @@ export default function LeadsTable({
               leads.map(lead => (
                 <tr
                   key={lead.id}
-                  className="border-b border-border hover:bg-secondary/50 cursor-pointer transition-colors"
+                  className="border-b border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors dark:border-slate-700 dark:hover:bg-slate-800"
                   onClick={() => {
                     setEditingId(lead.id);
                     setIsModalOpen(true);
                   }}
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-foreground">{lead.name}</div>
+                    <div className="font-medium text-slate-900 dark:text-white">{lead.name}</div>
                     <a
                       href={lead.instagramUrl || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      className="text-xs text-muted-foreground hover:text-foreground"
+                      className="text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                     >
                       {getInstagramHandle(lead.instagramUrl)}
                     </a>
@@ -190,17 +190,17 @@ export default function LeadsTable({
                       {lead.niche?.name || '—'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{lead.solutionType?.name || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{lead.solutionType?.name || '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${stageColors[lead.stage]}`}>
                       {stageLabels[lead.stage]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground tabular-nums">{firstContact(lead)}</td>
-                  <td className="px-4 py-3 text-muted-foreground tabular-nums">{formatMoney(lead.proposedValue)}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400 tabular-nums">{firstContact(lead)}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400 tabular-nums">{formatMoney(lead.proposedValue)}</td>
                   <td
                     className={`px-4 py-3 tabular-nums ${
-                      lead.stage === 'FECHADO' ? 'font-medium text-emerald-600' : 'text-muted-foreground'
+                      lead.stage === 'FECHADO' ? 'font-medium text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
                     {lead.stage === 'FECHADO' ? formatMoney(lead.soldValue) : '—'}

@@ -36,18 +36,18 @@ export default function SolutionsSection({ initialSolutions }: SolutionsSectionP
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:bg-slate-900 dark:border-slate-700">
       <div className="flex items-center justify-between p-5 pb-3">
         <div>
-          <h3 className="font-semibold text-slate-900">Soluções digitais</h3>
-          <p className="text-sm text-slate-600">O que você oferece.</p>
+          <h3 className="font-semibold text-slate-900 dark:text-white">Soluções digitais</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400">O que você oferece.</p>
         </div>
         <button
           onClick={() => {
             setEditingId(null);
             setIsModalOpen(true);
           }}
-          className="h-9 px-3 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
+          className="h-9 px-3 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
         >
           + Nova
         </button>
@@ -55,13 +55,13 @@ export default function SolutionsSection({ initialSolutions }: SolutionsSectionP
 
       <div className="p-5 pt-0 space-y-2.5">
         {solutions.length === 0 ? (
-          <p className="text-sm text-slate-600 py-4">Nenhuma solução cadastrada.</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 py-4">Nenhuma solução cadastrada.</p>
         ) : (
           solutions.map(solution => (
-            <div key={solution.id} className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+            <div key={solution.id} className="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0 dark:border-slate-700">
               <div>
-                <div className="text-sm font-medium text-slate-900">{solution.name}</div>
-                <div className="text-xs text-slate-600">
+                <div className="text-sm font-medium text-slate-900 dark:text-white">{solution.name}</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">
                   Valor padrão: {formatMoney(solution.defaultPrice)}
                 </div>
               </div>
@@ -71,13 +71,13 @@ export default function SolutionsSection({ initialSolutions }: SolutionsSectionP
                     setEditingId(solution.id);
                     setIsModalOpen(true);
                   }}
-                  className="h-8 px-3 rounded-md text-slate-600 hover:bg-slate-100 text-sm transition-colors"
+                  className="h-8 px-3 rounded-md text-slate-600 hover:bg-slate-100 text-sm transition-colors dark:text-slate-400 dark:hover:bg-slate-800"
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => handleDelete(solution.id)}
-                  className="h-8 px-3 rounded-md text-red-600 hover:bg-red-50 text-sm transition-colors"
+                  className="h-8 px-3 rounded-md text-red-600 hover:bg-red-50 text-sm transition-colors dark:text-red-400 dark:hover:bg-red-950"
                 >
                   Excluir
                 </button>

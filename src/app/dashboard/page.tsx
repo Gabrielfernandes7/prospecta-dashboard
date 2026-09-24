@@ -26,10 +26,13 @@ export default function DashboardPage() {
     fetch('/api/leads')
       .then(res => res.json())
       .then(data => {
-        setLeads(data);
+        setLeads(Array.isArray(data) ? data : []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLeads([]);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -40,28 +43,30 @@ export default function DashboardPage() {
     );
   }
 
+  const leadsArray = Array.isArray(leads) ? leads : [];
+
   // Cálculos
-  const total = leads.length;
-  const abordados = leads.filter(l => l.stage !== 'NOVO').length;
-  const responderam = leads.filter(l => ['RESPONDEU', 'NEGOCIANDO', 'FECHADO'].includes(l.stage)).length;
-  const vendidos = leads.filter(l => l.stage === 'FECHADO');
+  const total = leadsArray.length;
+  const abordados = leadsArray.filter(l => l.stage !== 'NOVO').length;
+  const responderam = leadsArray.filter(l => ['RESPONDEU', 'NEGOCIANDO', 'FECHADO'].includes(l.stage)).length;
+  const vendidos = leadsArray.filter(l => l.stage === 'FECHADO');
   const receita = vendidos.reduce((a, l) => a + (Number(l.soldValue) || 0), 0);
   const taxaResposta = abordados ? Math.round((responderam / abordados) * 100) : 0;
   const taxaConversao = abordados ? Math.round((vendidos.length / abordados) * 100) : 0;
 
   // Dados para gráficos
   const funnelData = [
-    { name: 'Novo', value: leads.filter(l => l.stage === 'NOVO').length },
-    { name: 'Abordado', value: leads.filter(l => l.stage === 'ABORDADO').length },
-    { name: 'Respondeu', value: leads.filter(l => l.stage === 'RESPONDEU').length },
-    { name: 'Negociando', value: leads.filter(l => l.stage === 'NEGOCIANDO').length },
-    { name: 'Fechado', value: leads.filter(l => l.stage === 'FECHADO').length },
+    { name: 'Novo', value: leadsArray.filter(l => l.stage === 'NOVO').length },
+    { name: 'Abordado', value: leadsArray.filter(l => l.stage === 'ABORDADO').length },
+    { name: 'Respondeu', value: leadsArray.filter(l => l.stage === 'RESPONDEU').length },
+    { name: 'Negociando', value: leadsArray.filter(l => l.stage === 'NEGOCIANDO').length },
+    { name: 'Fechado', value: leadsArray.filter(l => l.stage === 'FECHADO').length },
   ];
 
-  const nicheData = Array.from(new Map(leads.map(l => [l.nicheId, l.niche])).values())
+  const nicheData = Array.from(new Map(leadsArray.map(l => [l.nicheId, l.niche])).values())
     .map(niche => ({
       name: niche.name,
-      leads: leads.filter(l => l.nicheId === niche.id).length,
+      leads: leadsArray.filter(l => l.nicheId === niche.id).length,
       color: niche.color,
     }));
 
@@ -95,7 +100,7 @@ export default function DashboardPage() {
         <KPICard icon={CheckCircle2} label="Taxa resposta" value={`${taxaResposta}%`} sub={`${responderam}/${abordados}`} />
         <KPICard icon={Target} label="Taxa conversão" value={`${taxaConversao}%`} sub={`${vendidos.length} vendas`} />
         <KPICard icon={TrendingUp} label="Receita" value={`R$ ${(receita / 1000).toFixed(1)}k`} />
-        <KPICard icon={Clock} label="Leads hoje" value={leads.filter(l => new Date(l.createdAt).toDateString() === new Date().toDateString()).length} />
+        <KPICard icon={Clock} label="Leads hoje" value={leadsArray.filter(l => new Date(l.createdAt).toDateString() === new Date().toDateString()).length} />
       </div>
 
       {/* Charts Grid */}
