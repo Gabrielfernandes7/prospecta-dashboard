@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
+import { RootContent } from "./root-content";
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={`${geist.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="h-full bg-background text-foreground">
-        <Header />
-        <main className="flex-1">{children}</main>
+        <RootContent>{children}</RootContent>
       </body>
     </html>
   );

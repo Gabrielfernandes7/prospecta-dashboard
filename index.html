@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lead CRM</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+        secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
+        destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+        muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
+        accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(var(--accent-foreground))' },
+        popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
+        card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
+      },
+      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+    }
+  }
+}
+</script>
+<style>
+:root {
+  /* ===== Paleta Amarelo Escuro (Âmbar/Dourado) ===== */
+  --background: 45 60% 97%;          /* fundo geral levemente amarelado */
+  --foreground: 35 40% 12%;          /* texto escuro quente */
+  --card: 45 70% 99%;                /* cards quase brancos com calor */
+  --card-foreground: 35 40% 12%;
+  --popover: 45 70% 99%;
+  --popover-foreground: 35 40% 12%;
+  --primary: 38 92% 40%;             /* amarelo escuro / âmbar forte */
+  --primary-foreground: 45 100% 97%;
+  --secondary: 42 60% 90%;           /* secundário suave */
+  --secondary-foreground: 35 45% 18%;
+  --muted: 42 45% 92%;
+  --muted-foreground: 38 25% 40%;
+  --accent: 42 70% 88%;
+  --accent-foreground: 35 45% 15%;
+  --destructive: 0 75% 48%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 40 40% 82%;
+  --input: 40 40% 82%;
+  --ring: 38 92% 40%;
+  --radius: 0.5rem;
+}
+* { border-color: hsl(var(--border)); }
+html, body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.kanban-col { min-height: 240px; }
+.dragging { opacity: 0.4; }
+.drop-active { background: hsl(var(--accent)); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+
+<script>
+/* =========================================================
+   Lead CRM MVP — Vanilla JS + Tailwind (shadcn-like)
+   Tema: Amarelo Escuro (Âmbar / Dourado)
+   ========================================================= */
+
+// ---------- Utils ----------
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
+const fmtDateTime = (d) => d ? new Date(d).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+const fmtMoney = (v) => (v === null || v === undefined || v === '') ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+const igHandle = (url) => { const m = String(url || '').match(/instagram\.com\/([^\/?]+)/); return m ? m[1] : ''; };
+const nowLocalISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+// ---------- Constants ----------
+const STAGES = [
+  { id: 'NOVO',       label: 'Novo',       badge: 'bg-amber-50 text-amber-800 border-amber-200',  dot: 'bg-amber-300' },
+  { id: 'ABORDADO',   label: 'Abordado',   badge: 'bg-yellow-100 text-yellow-900 border-yellow-300', dot: 'bg-yellow-500' },
+  { id: 'RESPONDEU',  label: 'Respondeu',  badge: 'bg-orange-100 text-orange-800 border-orange-300',  dot: 'bg-orange-500' },
+  { id: 'NEGOCIANDO', label: 'Negociando', badge: 'bg-amber-200 text-amber-900 border-amber-400', dot: 'bg-amber-600' },
+  { id: 'FECHADO',    label: 'Fechado',    badge: 'bg-lime-100 text-lime-800 border-lime-300', dot: 'bg-lime-500' },
+  { id: 'PERDIDO',    label: 'Perdido',    badge: 'bg-rose-100 text-rose-800 border-rose-300',     dot: 'bg-rose-500' },
+];
+const stageById = (id) => STAGES.find(s => s.id === id) || STAGES[0];
+
+const CHANNELS = [
+  { id: 'INSTAGRAM_DM', label: 'Instagram DM' },
+  { id: 'INSTAGRAM_COMENTARIO', label: 'Instagram Comentário' },
+  { id: 'INSTAGRAM_STORY', label: 'Instagram Story' },
+  { id: 'WHATSAPP', label: 'WhatsApp' },
+  { id: 'EMAIL', label: 'E-mail' },
+  { id: 'LIGACAO', label: 'Ligação' },
+  { id: 'REUNIAO', label: 'Reunião' },
+  { id: 'OUTRO', label: 'Outro' },
+];
+const channelLabel = (id) => (CHANNELS.find(c => c.id === id) || { label: id }).label;
+
+const OUTCOMES = [
+  { id: 'SEM_RESPOSTA', label: 'Sem resposta',    color: 'text-stone-600 bg-stone-100 border-stone-200' },
+  { id: 'RESPONDEU',    label: 'Respondeu',       color: 'text-yellow-800 bg-yellow-50 border-yellow-200' },
+  { id: 'INTERESSADO',  label: 'Interessado',     color: 'text-amber-800 bg-amber-50 border-amber-200' },
+  { id: 'SEM_INTERESSE',label: 'Sem interesse',   color: 'text-orange-800 bg-orange-50 border-orange-200' },
+  { id: 'AGENDOU',      label: 'Agendou',         color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+  { id: 'FECHOU',       label: 'Fechou',          color: 'text-lime-800 bg-lime-50 border-lime-200' },
+  { id: 'BLOQUEOU',     label: 'Bloqueou',        color: 'text-rose-800 bg-rose-50 border-rose-200' },
+  { id: 'OUTRO',        label: 'Outro',           color: 'text-stone-700 bg-stone-50 border-stone-200' },
+];
+const outcomeLabel = (id) => (OUTCOMES.find(o => o.id === id) || { label: '—' }).label;
+const outcomeColor = (id) => (OUTCOMES.find(o => o.id === id) || { color: 'text-stone-600 bg-stone-50 border-stone-200' }).color;
+
+const SOURCES = [
+  { id: 'INSTAGRAM', label: 'Instagram' },
+  { id: 'GOOGLE_MAPS', label: 'Google Maps' },
+  { id: 'INDICACAO', label: 'Indicação' },
+  { id: 'OUTRO', label: 'Outro' },
+];
+
+// ---------- Seed (dados da planilha) ----------
+function seed() {
+  const niches = [
+    { id: 'n1', name: 'Clínica',     color: '#ca8a04' },
+    { id: 'n2', name: 'Estética',    color: '#d97706' },
+    { id: 'n3', name: 'Odontologia', color: '#65a30d' },
+  ];
+  const solutions = [
+    { id: 's1', name: 'Site institucional',  defaultPrice: 1000 },
+    { id: 's2', name: 'Landing page',        defaultPrice: 1500 },
+    { id: 's3', name: 'Automação WhatsApp',  defaultPrice: 800  },
+  ];
+  const leads = [
+    {
+      id: 'l1', name: 'Dra Emanuelle Maciel',
+      instagramUrl: 'https://www.instagram.com/clinica_aprimore/',
+      googleMapsUrl: '', source: 'INSTAGRAM',
+      nicheId: 'n1', solutionTypeId: 's1', stage: 'RESPONDEU',
+      proposedValue: 1000, soldValue: null, soldAt: null,
+      lostReason: '',
+      notes: 'Montei o site preview: https://aprimore-dra-manu-marciel.netlify.app',
+      createdAt: '2026-09-14T10:00:00'
+    },
+    {
+      id: 'l2', name: 'Dra. Eloisa Santos',
+      instagramUrl: 'https://www.instagram.com/draeloisasantos/',
+      googleMapsUrl: '', source: 'INSTAGRAM',
+      nicheId: 'n1', solutionTypeId: 's1', stage: 'ABORDADO',
+      proposedValue: 1000, soldValue: null, soldAt: null,
+      lostReason: '',
+      notes: 'Mandei mensagem, mas não montei o site dela',
+      createdAt: '2026-09-22T10:00:00'
+    },
+    {
+      id: 'l3', name: 'Estética Kamilla Maia',
+      instagramUrl: 'https://www.instagram.com/esteticakamillamaia/',
+      googleMapsUrl: '', source: 'INSTAGRAM',
+      nicheId: 'n2', solutionTypeId: 's1', stage: 'ABORDADO',
+      proposedValue: 1000, soldValue: null, soldAt: null,
+      lostReason: '',
+      notes: 'Mandei mensagem, mas não montei o site dela. Link do site expirado.',
+      createdAt: '2026-09-23T10:00:00'
+    },
+    {
+      id: 'l4', name: 'Espaço Innovare Estética e Depilação',
+      instagramUrl: 'https://www.instagram.com/innovareesteticaedepilacao/',
+      googleMapsUrl: 'https://share.google/igjwSwZECPfMCHKPO',
+      source: 'INSTAGRAM',
+      nicheId: 'n2', solutionTypeId: 's1', stage: 'PERDIDO',
+      proposedValue: 1000, soldValue: null, soldAt: null,
+      lostReason: 'Bloqueou o contato',
+      notes: '',
+      createdAt: '2026-09-23T11:00:00'
+    },
+  ];
+  const interactions = [
+    { id: 'i1', leadId: 'l1', direction: 'OUTBOUND', channel: 'INSTAGRAM_DM', occurredAt: '2026-09-14T10:00:00',
+      content: 'Enviei a primeira mensagem apresentando a proposta do site institucional.', outcome: 'RESPONDEU', followUpAt: null },
+    { id: 'i2', leadId: 'l1', direction: 'INBOUND',  channel: 'INSTAGRAM_DM', occurredAt: '2026-09-15T09:30:00',
+      content: 'Ela respondeu com interesse e pediu para ver um preview.', outcome: null, followUpAt: null },
+    { id: 'i3', leadId: 'l1', direction: 'OUTBOUND', channel: 'INSTAGRAM_DM', occurredAt: '2026-09-17T14:00:00',
+      content: 'Enviei o link do preview: https://aprimore-dra-manu-marciel.netlify.app', outcome: 'INTERESSADO', followUpAt: '2026-09-25T10:00:00' },
+    { id: 'i4', leadId: 'l2', direction: 'OUTBOUND', channel: 'INSTAGRAM_DM', occurredAt: '2026-09-22T10:00:00',
+      content: 'Mandei mensagem de abordagem inicial.', outcome: 'SEM_RESPOSTA', followUpAt: '2026-09-27T10:00:00' },
+    { id: 'i5', leadId: 'l3', direction: 'OUTBOUND', channel: 'INSTAGRAM_DM', occurredAt: '2026-09-23T10:00:00',
+      content: 'Enviei abordagem inicial. Notei que o link do site dela está expirado.', outcome: 'SEM_RESPOSTA', followUpAt: '2026-09-28T10:00:00' },
+    { id: 'i6', leadId: 'l4', direction: 'OUTBOUND', channel: 'INSTAGRAM_DM', occurredAt: '2026-09-23T11:00:00',
+      content: 'Tentei contato via DM.', outcome: 'BLOQUEOU', followUpAt: null },
+  ];
+  return { niches, solutions, leads, interactions };
+}
+
+// ---------- State ----------
+const STORAGE_KEY = 'leadcrm_mvp_v1';
+let state;
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state = raw ? JSON.parse(raw) : null;
+  } catch (e) { state = null; }
+  if (!state || !state.leads) {
+    state = { ...seed(), view: 'dashboard', filter: { niche:'', stage:'', solution:'', q:'' } };
+    saveState();
+  }
+}
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+// ---------- Lookups ----------
+const nicheById = (id) => state.niches.find(n => n.id === id);
+const solutionById = (id) => state.solutions.find(s => s.id === id);
+const leadById = (id) => state.leads.find(l => l.id === id);
+const interactionsOf = (leadId) =>
+  state.interactions.filter(i => i.leadId === leadId).sort((a,b) => new Date(b.occurredAt) - new Date(a.occurredAt));
+const firstContactAt = (leadId) => {
+  const outs = state.interactions.filter(i => i.leadId === leadId && i.direction === 'OUTBOUND')
+    .sort((a,b) => new Date(a.occurredAt) - new Date(b.occurredAt));
+  return outs[0]?.occurredAt || null;
+};
+const lastInteractionAt = (leadId) => {
+  const arr = interactionsOf(leadId);
+  return arr[0]?.occurredAt || null;
+};
+const pendingFollowUp = (leadId) => {
+  const pending = state.interactions.filter(i => i.leadId === leadId && i.followUpAt && !i.followUpDone)
+    .sort((a,b) => new Date(a.followUpAt) - new Date(b.followUpAt));
+  return pending[0] || null;
+};
+
+// ---------- Badge / Button primitives ----------
+const Badge = (text, cls = '') => `<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${cls}">${esc(text)}</span>`;
+const stageBadge = (id) => { const s = stageById(id); return Badge(s.label, s.badge); };
+const nicheBadge = (id) => {
+  const n = nicheById(id); if (!n) return Badge('—', 'bg-muted text-muted-foreground');
+  return `<span class="inline-flex items-center gap-1 rounded-md border bg-card px-2 py-0.5 text-xs font-medium">
+    <span class="w-1.5 h-1.5 rounded-full" style="background:${esc(n.color)}"></span>${esc(n.name)}</span>`;
+};
+
+const Btn = ({ label, variant='default', size='default', onClick='', type='button', cls='' }) => {
+  const base = 'inline-flex items-center justify-center gap-1.5 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap';
+  const variants = {
+    default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm',
+    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    ghost: 'hover:bg-accent hover:text-accent-foreground',
+    destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+    link: 'text-primary underline-offset-4 hover:underline'
+  };
+  const sizes = { default: 'h-9 px-4', sm: 'h-8 px-3 text-xs', lg: 'h-10 px-6', icon: 'h-9 w-9' };
+  return `<button type="${type}" class="${base} ${variants[variant]} ${sizes[size]} ${cls}" ${onClick ? `onclick="${onClick}"` : ''}>${label}</button>`;
+};
+
+const Input = ({ id, value='', placeholder='', type='text', cls='', attrs='' }) =>
+  `<input id="${id}" type="${type}" value="${esc(value)}" placeholder="${esc(placeholder)}" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${cls}" ${attrs} />`;
+
+const Textarea = ({ id, value='', placeholder='', rows=3, cls='' }) =>
+  `<textarea id="${id}" rows="${rows}" placeholder="${esc(placeholder)}" class="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${cls}">${esc(value)}</textarea>`;
+
+const Label = (text, forId='') => `<label ${forId ? `for="${forId}"` : ''} class="text-sm font-medium leading-none text-foreground">${esc(text)}</label>`;
+const Field = (label, control, hint='') => `<div class="space-y-1.5">${Label(label)}${control}${hint ? `<p class="text-xs text-muted-foreground">${hint}</p>` : ''}</div>`;
+
+const Select = ({ id, value='', options=[], cls='' }) => {
+  const opts = options.map(o => `<option value="${esc(o.value)}" ${o.value === value ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+  return `<select id="${id}" class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${cls}">${opts}</select>`;
+};
+
+const Card = (inner, cls='') => `<div class="rounded-lg border bg-card text-card-foreground shadow-sm ${cls}">${inner}</div>`;
+const CardHeader = (title, desc='') => `<div class="flex flex-col space-y-1 p-5 pb-3"><h3 class="font-semibold leading-none tracking-tight">${esc(title)}</h3>${desc ? `<p class="text-sm text-muted-foreground">${esc(desc)}</p>` : ''}</div>`;
+const CardBody = (inner, cls='') => `<div class="p-5 pt-0 ${cls}">${inner}</div>`;
+
+// ---------- Header / Nav ----------
+function renderHeader() {
+  const nav = [
+    { id: 'dashboard',    label: 'Dashboard' },
+    { id: 'kanban',       label: 'Kanban' },
+    { id: 'leads',        label: 'Leads' },
+    { id: 'interactions', label: 'Interações' },
+    { id: 'followups',    label: 'Follow-ups' },
+    { id: 'settings',     label: 'Configurações' },
+  ];
+  return `
+  <header class="border-b bg-card/95 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">LC</div>
+        <span class="font-semibold">Lead CRM</span>
+      </div>
+      <nav class="flex items-center gap-1 text-sm overflow-x-auto">
+        ${nav.map(n => `
+          <button onclick="App.setView('${n.id}')"
+            class="px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${state.view === n.id
+              ? 'bg-secondary text-secondary-foreground font-medium'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}">${n.label}</button>
+        `).join('')}
+      </nav>
+      <div class="flex items-center gap-2">
+        ${Btn({ label: '+ Novo lead', size: 'sm', onClick: "App.openLeadModal()" })}
+      </div>
+    </div>
+  </header>`;
+}
+
+// ---------- Dashboard ----------
+function renderDashboard() {
+  const leads = state.leads;
+  const total = leads.length;
+  const abordados = leads.filter(l => l.stage !== 'NOVO').length;
+  const responderam = leads.filter(l => ['RESPONDEU','NEGOCIANDO','FECHADO'].includes(l.stage)).length;
+  const vendidos = leads.filter(l => l.stage === 'FECHADO');
+  const receita = vendidos.reduce((a,l) => a + (Number(l.soldValue) || 0), 0);
+  const taxaResposta = abordados ? Math.round((responderam/abordados)*100) : 0;
+  const taxaConversao = abordados ? Math.round((vendidos.length/abordados)*100) : 0;
+
+  const kpi = (label, value, sub='') => `
+    <div class="rounded-lg border bg-card p-5 shadow-sm">
+      <div class="text-xs font-medium text-muted-foreground uppercase tracking-wide">${label}</div>
+      <div class="mt-2 text-2xl font-semibold">${value}</div>
+      ${sub ? `<div class="mt-1 text-xs text-muted-foreground">${sub}</div>` : ''}
+    </div>`;
+
+  const funnelRows = STAGES.map(s => {
+    const count = leads.filter(l => l.stage === s.id).length;
+    const pct = total ? Math.round((count/total)*100) : 0;
+    return `
+      <div class="flex items-center gap-3">
+        <div class="w-28 text-sm text-muted-foreground">${s.label}</div>
+        <div class="flex-1 h-6 rounded-md bg-muted overflow-hidden">
+          <div class="h-full ${s.dot}" style="width:${pct}%"></div>
+        </div>
+        <div class="w-14 text-right text-sm tabular-nums">${count}</div>
+        <div class="w-12 text-right text-xs text-muted-foreground tabular-nums">${pct}%</div>
+      </div>`;
+  }).join('');
+
+  const byNiche = state.niches.map(n => {
+    const all = leads.filter(l => l.nicheId === n.id);
+    const ab = all.filter(l => l.stage !== 'NOVO');
+    const fech = all.filter(l => l.stage === 'FECHADO');
+    return `
+      <div class="flex items-center justify-between py-2 border-b last:border-0">
+        <div class="flex items-center gap-2">${nicheBadge(n.id)}</div>
+        <div class="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>${all.length} leads</span>
+          <span>${ab.length ? Math.round((fech.length/ab.length)*100) : 0}% conv.</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  const recentes = [...state.interactions]
+    .sort((a,b) => new Date(b.occurredAt) - new Date(a.occurredAt))
+    .slice(0, 5)
+    .map(i => {
+      const l = leadById(i.leadId);
+      const dir = i.direction === 'OUTBOUND';
+      return `
+        <div class="flex items-start gap-3 py-2 border-b last:border-0">
+          <div class="w-2 h-2 rounded-full mt-1.5 ${dir ? 'bg-amber-500' : 'bg-lime-500'}"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">${esc(l?.name || '—')}</div>
+            <div class="text-xs text-muted-foreground truncate">${esc(i.content)}</div>
+          </div>
+          <div class="text-xs text-muted-foreground whitespace-nowrap">${fmtDate(i.occurredAt)}</div>
+        </div>`;
+    }).join('') || `<p class="text-sm text-muted-foreground py-4 text-center">Sem interações ainda.</p>`;
+
+  return `
+    <div class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p class="text-sm text-muted-foreground">Visão geral dos seus leads e do funil de conversão.</p>
+      </div>
+
+      <div class="grid gap-4 grid-cols-2 md:grid-cols-5">
+        ${kpi('Leads totais', total)}
+        ${kpi('Abordados', abordados, `${total ? Math.round((abordados/total)*100) : 0}% do total`)}
+        ${kpi('Taxa de resposta', taxaResposta + '%', `${responderam} de ${abordados}`)}
+        ${kpi('Taxa de conversão', taxaConversao + '%', `${vendidos.length} vendas`)}
+        ${kpi('Receita', fmtMoney(receita))}
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        ${Card(CardHeader('Funil por etapa') + CardBody(`<div class="space-y-2.5">${funnelRows}</div>`))}
+        ${Card(CardHeader('Conversão por nicho') + CardBody(byNiche || `<p class="text-sm text-muted-foreground">Cadastre nichos em Configurações.</p>`))}
+      </div>
+
+      ${Card(CardHeader('Atividade recente') + CardBody(recentes))}
+    </div>`;
+}
+
+// ---------- Kanban ----------
+function renderKanban() {
+  const cols = STAGES.map(s => {
+    const items = state.leads.filter(l => l.stage === s.id);
+    const cards = items.map(l => {
+      const pending = pendingFollowUp(l.id);
+      const fu = pending ? `<div class="flex items-center gap-1 text-[11px] text-amber-600 mt-2">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Follow-up ${fmtDate(pending.followUpAt)}
+        </div>` : '';
+      return `
+        <div draggable="true"
+          ondragstart="App.onDragStart(event, '${l.id}')"
+          ondragend="App.onDragEnd(event)"
+          onclick="App.openLeadModal('${l.id}')"
+          class="cursor-pointer rounded-md border bg-card p-3 shadow-sm hover:border-foreground/30 transition-colors">
+          <div class="text-sm font-medium truncate">${esc(l.name)}</div>
+          <div class="mt-1.5 flex flex-wrap items-center gap-1">
+            ${nicheBadge(l.nicheId)}
+            ${l.proposedValue ? `<span class="text-[11px] text-muted-foreground">${fmtMoney(l.proposedValue)}</span>` : ''}
+          </div>
+          ${fu}
+        </div>`;
+    }).join('') || `<div class="text-xs text-muted-foreground text-center py-4 border border-dashed rounded-md">Vazio</div>`;
+
+    return `
+      <div class="flex flex-col gap-2 min-w-[240px] flex-1">
+        <div class="flex items-center justify-between px-1">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${s.dot}"></span>
+            <span class="text-sm font-medium">${s.label}</span>
+          </div>
+          <span class="text-xs text-muted-foreground tabular-nums">${items.length}</span>
+        </div>
+        <div class="kanban-col rounded-lg border bg-muted/30 p-2 space-y-2 transition-colors"
+             ondragover="event.preventDefault(); this.classList.add('drop-active');"
+             ondragleave="this.classList.remove('drop-active');"
+             ondrop="App.onDrop(event, '${s.id}', this)">
+          ${cards}
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Kanban</h1>
+        <p class="text-sm text-muted-foreground">Arraste os cards para mover o lead entre as etapas.</p>
+      </div>
+      <div class="flex gap-4 overflow-x-auto pb-3">${cols}</div>
+    </div>`;
+}
+
+// ---------- Leads (tabela) ----------
+function renderLeadsTable() {
+  const f = state.filter;
+  const filtered = state.leads.filter(l => {
+    if (f.niche && l.nicheId !== f.niche) return false;
+    if (f.stage && l.stage !== f.stage) return false;
+    if (f.solution && l.solutionTypeId !== f.solution) return false;
+    if (f.q) {
+      const q = f.q.toLowerCase();
+      const text = `${l.name} ${l.instagramUrl} ${l.notes}`.toLowerCase();
+      if (!text.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const nicheOpts = [{ value:'', label:'Todos os nichos' }, ...state.niches.map(n => ({ value:n.id, label:n.name }))];
+  const stageOpts = [{ value:'', label:'Todas as etapas' }, ...STAGES.map(s => ({ value:s.id, label:s.label }))];
+  const solOpts   = [{ value:'', label:'Todas as soluções' }, ...state.solutions.map(s => ({ value:s.id, label:s.name }))];
+
+  const rows = filtered.map(l => {
+    const first = firstContactAt(l.id);
+    const sol = solutionById(l.solutionTypeId);
+    return `
+      <tr class="border-b hover:bg-muted/40 transition-colors cursor-pointer" onclick="App.openLeadModal('${l.id}')">
+        <td class="px-3 py-3 align-top">
+          <div class="font-medium text-sm">${esc(l.name)}</div>
+          ${l.instagramUrl ? `<a href="${esc(l.instagramUrl)}" target="_blank" onclick="event.stopPropagation()" class="text-xs text-muted-foreground hover:text-foreground">@${esc(igHandle(l.instagramUrl))}</a>` : ''}
+        </td>
+        <td class="px-3 py-3 align-top">${nicheBadge(l.nicheId)}</td>
+        <td class="px-3 py-3 align-top text-sm text-muted-foreground">${sol ? esc(sol.name) : '—'}</td>
+        <td class="px-3 py-3 align-top">${stageBadge(l.stage)}</td>
+        <td class="px-3 py-3 align-top text-sm tabular-nums text-muted-foreground">${fmtDate(first)}</td>
+        <td class="px-3 py-3 align-top text-sm tabular-nums">${fmtMoney(l.proposedValue)}</td>
+        <td class="px-3 py-3 align-top text-sm tabular-nums ${l.stage==='FECHADO' ? 'text-lime-700 font-medium' : ''}">${l.stage==='FECHADO' ? fmtMoney(l.soldValue) : '—'}</td>
+      </tr>`;
+  }).join('') || `<tr><td colspan="7" class="text-center text-sm text-muted-foreground py-10">Nenhum lead encontrado.</td></tr>`;
+
+  return `
+    <div class="space-y-6">
+      <div class="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">Leads</h1>
+          <p class="text-sm text-muted-foreground">${filtered.length} de ${state.leads.length} leads</p>
+        </div>
+      </div>
+
+      ${Card(`
+        <div class="p-4 grid gap-3 md:grid-cols-4 border-b">
+          <div class="md:col-span-1">
+            ${Input({ id:'f-q', value:f.q, placeholder:'Buscar por nome, @ ou nota...',
+              attrs:`oninput="App.setFilter('q', this.value)"` })}
+          </div>
+          ${Select({ id:'f-niche', value:f.niche, options:nicheOpts, cls:'', })}
+          ${Select({ id:'f-stage', value:f.stage, options:stageOpts })}
+          ${Select({ id:'f-sol',   value:f.solution, options:solOpts })}
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-muted/50">
+              <tr class="border-b">
+                <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">Lead</th>
+                <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">Nicho</th>
+                <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">Solução</th>
+                <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">Etapa</th>
+                <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">1º contato</th>
+                <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">Proposto</th>
+                <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">Vendido</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `)}
+    </div>`;
+}
+
+// ---------- Interactions (global) ----------
+function renderInteractions() {
+  const sorted = [...state.interactions].sort((a,b) => new Date(b.occurredAt) - new Date(a.occurredAt));
+  const items = sorted.map(i => {
+    const l = leadById(i.leadId);
+    const isOut = i.direction === 'OUTBOUND';
+    return `
+      <div class="flex items-start gap-3 py-3 border-b last:border-0">
+        <div class="shrink-0 mt-1">
+          <div class="w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold ${isOut ? 'bg-amber-100 text-amber-800' : 'bg-lime-100 text-lime-800'}">
+            ${isOut ? '↑' : '↓'}
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="App.openLeadModal('${i.leadId}')" class="text-sm font-medium hover:underline">${esc(l?.name || '—')}</button>
+            <span class="text-xs text-muted-foreground">· ${channelLabel(i.channel)}</span>
+            ${i.outcome ? Badge(outcomeLabel(i.outcome), outcomeColor(i.outcome)) : ''}
+          </div>
+          <p class="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">${esc(i.content)}</p>
+        </div>
+        <div class="text-xs text-muted-foreground whitespace-nowrap">${fmtDateTime(i.occurredAt)}</div>
+      </div>`;
+  }).join('') || `<p class="text-sm text-muted-foreground py-8 text-center">Nenhuma interação registrada.</p>`;
+
+  return `
+    <div class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Interações</h1>
+        <p class="text-sm text-muted-foreground">Timeline global — ${state.interactions.length} registros.</p>
+      </div>
+      ${Card(`<div class="p-4">${items}</div>`)}
+    </div>`;
+}
+
+// ---------- Follow-ups ----------
+function renderFollowups() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const pending = state.interactions
+    .filter(i => i.followUpAt && !i.followUpDone)
+    .sort((a,b) => new Date(a.followUpAt) - new Date(b.followUpAt));
+
+  const rows = pending.map(i => {
+    const l = leadById(i.leadId);
+    const at = new Date(i.followUpAt); at.setHours(0,0,0,0);
+    const overdue = at < today;
+    const isToday = at.getTime() === today.getTime();
+    const label = overdue ? 'Vencido' : isToday ? 'Hoje' : 'Agendado';
+    const cls = overdue ? 'bg-rose-50 text-rose-700 border-rose-200'
+              : isToday ? 'bg-amber-50 text-amber-700 border-amber-200'
+              : 'bg-stone-50 text-stone-700 border-stone-200';
+    return `
+      <div class="flex items-center gap-3 py-3 border-b last:border-0">
+        <div class="flex-1 min-w-0">
+          <button onclick="App.openLeadModal('${i.leadId}')" class="text-sm font-medium hover:underline">${esc(l?.name || '—')}</button>
+          <p class="text-xs text-muted-foreground truncate mt-0.5">${esc(i.content)}</p>
+        </div>
+        <div class="text-xs text-muted-foreground whitespace-nowrap">${fmtDate(i.followUpAt)}</div>
+        ${Badge(label, cls)}
+        ${Btn({ label: 'Concluir', size:'sm', variant:'outline', onClick:`App.completeFollowUp('${i.id}')` })}
+      </div>`;
+  }).join('') || `<p class="text-sm text-muted-foreground py-8 text-center">Nenhum follow-up pendente. 🎉</p>`;
+
+  return `
+    <div class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Follow-ups</h1>
+        <p class="text-sm text-muted-foreground">Leads que precisam da sua atenção.</p>
+      </div>
+      ${Card(`<div class="p-4">${rows}</div>`)}
+    </div>`;
+}
+
+// ---------- Settings ----------
+function renderSettings() {
+  const niches = state.niches.map(n => `
+    <div class="flex items-center justify-between py-2.5 border-b last:border-0">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full" style="background:${esc(n.color)}"></span>
+        <span class="text-sm font-medium">${esc(n.name)}</span>
+        <span class="text-xs text-muted-foreground">· ${state.leads.filter(l => l.nicheId === n.id).length} leads</span>
+      </div>
+      <div class="flex gap-1">
+        ${Btn({ label:'Editar', size:'sm', variant:'ghost', onClick:`App.openNicheModal('${n.id}')` })}
+        ${Btn({ label:'Excluir', size:'sm', variant:'ghost', cls:'text-destructive', onClick:`App.deleteNiche('${n.id}')` })}
+      </div>
+    </div>`).join('') || `<p class="text-sm text-muted-foreground py-4">Nenhum nicho cadastrado.</p>`;
+
+  const solutions = state.solutions.map(s => `
+    <div class="flex items-center justify-between py-2.5 border-b last:border-0">
+      <div>
+        <div class="text-sm font-medium">${esc(s.name)}</div>
+        <div class="text-xs text-muted-foreground">Valor padrão: ${fmtMoney(s.defaultPrice)}</div>
+      </div>
+      <div class="flex gap-1">
+        ${Btn({ label:'Editar', size:'sm', variant:'ghost', onClick:`App.openSolutionModal('${s.id}')` })}
+        ${Btn({ label:'Excluir', size:'sm', variant:'ghost', cls:'text-destructive', onClick:`App.deleteSolution('${s.id}')` })}
+      </div>
+    </div>`).join('') || `<p class="text-sm text-muted-foreground py-4">Nenhuma solução cadastrada.</p>`;
+
+  return `
+    <div class="space-y-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight">Configurações</h1>
+        <p class="text-sm text-muted-foreground">Gerencie nichos e tipos de solução digital.</p>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        ${Card(
+          `<div class="flex items-center justify-between p-5 pb-3">
+            <div><h3 class="font-semibold">Nichos</h3><p class="text-sm text-muted-foreground">Segmentos dos seus leads.</p></div>
+            ${Btn({ label:'+ Novo', size:'sm', variant:'outline', onClick:'App.openNicheModal()' })}
+          </div>
+          <div class="p-5 pt-0">${niches}</div>`
+        )}
+        ${Card(
+          `<div class="flex items-center justify-between p-5 pb-3">
+            <div><h3 class="font-semibold">Soluções digitais</h3><p class="text-sm text-muted-foreground">O que você oferece.</p></div>
+            ${Btn({ label:'+ Nova', size:'sm', variant:'outline', onClick:'App.openSolutionModal()' })}
+          </div>
+          <div class="p-5 pt-0">${solutions}</div>`
+        )}
+      </div>
+
+      <div class="text-center pt-4">
+        ${Btn({ label:'Resetar dados (apagar tudo)', variant:'ghost', size:'sm', cls:'text-destructive', onClick:'App.resetData()' })}
+      </div>
+    </div>`;
+}
+
+// ---------- Modal infra ----------
+function openModal({ title, bodyHTML, footerHTML = '', size = 'max-w-lg' }) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="fixed inset-0 z-50 bg-black/50 flex items-start md:items-center justify-center p-4 overflow-y-auto" onclick="if (event.target === this) App.closeModal()">
+      <div class="w-full ${size} bg-card rounded-lg border shadow-lg my-4 max-h-[92vh] flex flex-col">
+        <div class="flex items-center justify-between p-5 border-b">
+          <h2 class="text-base font-semibold">${esc(title)}</h2>
+          <button onclick="App.closeModal()" class="p-1 rounded-md hover:bg-accent text-muted-foreground">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="p-5 overflow-y-auto flex-1">${bodyHTML}</div>
+        ${footerHTML ? `<div class="p-5 border-t flex justify-end gap-2">${footerHTML}</div>` : ''}
+      </div>
+    </div>`;
+}
+function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
+
+// ---------- Lead Modal ----------
+function openLeadModal(leadId) {
+  const isNew = !leadId;
+  const l = isNew ? {
+    id: '', name: '', instagramUrl: '', googleMapsUrl: '', source: 'INSTAGRAM',
+    nicheId: state.niches[0]?.id || '', solutionTypeId: '',
+    stage: 'NOVO', proposedValue: '', soldValue: '', soldAt: '', lostReason: '', notes: ''
+  } : leadById(leadId);
+
+  const nicheOpts = [{ value:'', label:'—' }, ...state.niches.map(n => ({ value:n.id, label:n.name }))];
+  const solOpts   = [{ value:'', label:'—' }, ...state.solutions.map(s => ({ value:s.id, label:s.name }))];
+  const stageOpts = STAGES.map(s => ({ value:s.id, label:s.label }));
+  const srcOpts   = SOURCES.map(s => ({ value:s.id, label:s.label }));
+
+  const body = `
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        ${Field('Nome', Input({ id:'m-name', value:l.name, placeholder:'Nome do lead' }))}
+        ${Field('Etapa', Select({ id:'m-stage', value:l.stage, options:stageOpts }))}
+      </div>
+      ${Field('Instagram URL', Input({ id:'m-ig', value:l.instagramUrl, placeholder:'https://instagram.com/usuario' }))}
+      ${Field('Google Maps URL', Input({ id:'m-maps', value:l.googleMapsUrl, placeholder:'https://maps.google.com/...' }))}
+      <div class="grid grid-cols-2 gap-3">
+        ${Field('Origem', Select({ id:'m-source', value:l.source, options:srcOpts }))}
+        ${Field('Nicho', Select({ id:'m-niche', value:l.nicheId, options:nicheOpts }))}
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        ${Field('Solução digital', Select({ id:'m-sol', value:l.solutionTypeId, options:solOpts }))}
+        ${Field('Valor proposto', Input({ id:'m-prop', value:l.proposedValue, type:'number', placeholder:'1000' }))}
+      </div>
+      ${l.stage === 'FECHADO' ? `
+        <div class="grid grid-cols-2 gap-3">
+          ${Field('Valor vendido', Input({ id:'m-sold', value:l.soldValue, type:'number', placeholder:'1000' }))}
+          ${Field('Data da venda', Input({ id:'m-soldat', value:l.soldAt, type:'date' }))}
+        </div>` : ''}
+      ${l.stage === 'PERDIDO' ? Field('Motivo da perda', Input({ id:'m-lost', value:l.lostReason, placeholder:'Ex: bloqueou, sem interesse...' })) : ''}
+      ${Field('Observações', Textarea({ id:'m-notes', value:l.notes, rows: 3, placeholder:'Anotações livres' }))}
+    </div>
+
+    ${!isNew ? `
+      <div class="mt-6 pt-6 border-t">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold">Timeline de interações</h3>
+          ${Btn({ label:'+ Registrar', size:'sm', variant:'outline', onClick:`App.openInteractionModal('${l.id}')` })}
+        </div>
+        <div id="timeline">
+          ${renderTimeline(l.id)}
+        </div>
+      </div>` : ''}
+  `;
+
+  const footer = `
+    ${!isNew ? Btn({ label:'Excluir', variant:'ghost', cls:'text-destructive mr-auto', onClick:`App.deleteLead('${l.id}')` }) : ''}
+    ${Btn({ label:'Cancelar', variant:'outline', onClick:'App.closeModal()' })}
+    ${Btn({ label: isNew ? 'Criar lead' : 'Salvar', onClick:`App.saveLeadModal('${l.id}')` })}
+  `;
+
+  openModal({ title: isNew ? 'Novo lead' : l.name || 'Lead', bodyHTML: body, footerHTML: footer, size: 'max-w-3xl' });
+}
+
+function renderTimeline(leadId) {
+  const its = interactionsOf(leadId);
+  if (!its.length) return `<p class="text-sm text-muted-foreground py-4">Nenhuma interação registrada ainda.</p>`;
+  return its.map(i => {
+    const isOut = i.direction === 'OUTBOUND';
+    return `
+      <div class="flex gap-3 py-3 border-b last:border-0">
+        <div class="shrink-0 mt-1">
+          <div class="w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold ${isOut ? 'bg-amber-100 text-amber-800' : 'bg-lime-100 text-lime-800'}">
+            ${isOut ? '↑' : '↓'}
+          </div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-muted-foreground">${channelLabel(i.channel)}</span>
+            ${i.outcome ? Badge(outcomeLabel(i.outcome), outcomeColor(i.outcome)) : ''}
+            <span class="text-xs text-muted-foreground">${fmtDateTime(i.occurredAt)}</span>
+            ${i.followUpAt && !i.followUpDone ? `<span class="text-xs text-amber-600">⏰ follow-up ${fmtDate(i.followUpAt)}</span>` : ''}
+          </div>
+          <p class="text-sm mt-1 whitespace-pre-wrap">${esc(i.content)}</p>
+          <div class="mt-1.5 flex gap-1">
+            ${Btn({ label:'Editar', size:'sm', variant:'ghost', onClick:`App.openInteractionModal('${leadId}', '${i.id}')` })}
+            ${Btn({ label:'Excluir', size:'sm', variant:'ghost', cls:'text-destructive', onClick:`App.deleteInteraction('${i.id}', '${leadId}')` })}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function saveLeadModal(leadId) {
+  const g = (id) => document.getElementById(id)?.value ?? '';
+  const data = {
+    name: g('m-name').trim(),
+    instagramUrl: g('m-ig').trim(),
+    googleMapsUrl: g('m-maps').trim(),
+    source: g('m-source'),
+    nicheId: g('m-niche'),
+    solutionTypeId: g('m-sol'),
+    stage: g('m-stage'),
+    proposedValue: g('m-prop') ? Number(g('m-prop')) : null,
+    soldValue: document.getElementById('m-sold') ? (g('m-sold') ? Number(g('m-sold')) : null) : null,
+    soldAt: document.getElementById('m-soldat') ? g('m-soldat') || null : null,
+    lostReason: document.getElementById('m-lost') ? g('m-lost') : '',
+    notes: g('m-notes'),
+  };
+  if (!data.name) { alert('Informe o nome do lead.'); return; }
+
+  if (leadId) {
+    const idx = state.leads.findIndex(l => l.id === leadId);
+    state.leads[idx] = { ...state.leads[idx], ...data, updatedAt: new Date().toISOString() };
+  } else {
+    state.leads.push({ id: uid(), createdAt: new Date().toISOString(), ...data });
+  }
+  saveState(); closeModal(); render();
+}
+
+function deleteLead(leadId) {
+  if (!confirm('Excluir este lead e todas as suas interações?')) return;
+  state.leads = state.leads.filter(l => l.id !== leadId);
+  state.interactions = state.interactions.filter(i => i.leadId !== leadId);
+  saveState(); closeModal(); render();
+}
+
+// ---------- Interaction Modal ----------
+function openInteractionModal(leadId, interactionId) {
+  const isNew = !interactionId;
+  const i = isNew ? {
+    id: '', leadId, direction: 'OUTBOUND', channel: 'INSTAGRAM_DM',
+    occurredAt: nowLocalISO(), content: '', outcome: 'SEM_RESPOSTA', followUpAt: ''
+  } : state.interactions.find(x => x.id === interactionId);
+
+  const chOpts = CHANNELS.map(c => ({ value:c.id, label:c.label }));
+  const outOpts = [{ value:'', label:'—' }, ...OUTCOMES.map(o => ({ value:o.id, label:o.label }))];
+  const dirOpts = [{ value:'OUTBOUND', label:'Outbound (eu enviei)' }, { value:'INBOUND', label:'Inbound (ele respondeu)' }];
+
+  const body = `
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        ${Field('Direção', Select({ id:'i-dir', value:i.direction, options:dirOpts }))}
+        ${Field('Canal', Select({ id:'i-ch', value:i.channel, options:chOpts }))}
+      </div>
+      ${Field('Data e hora', Input({ id:'i-at', type:'datetime-local', value:i.occurredAt?.slice(0,16) || '' }))}
+      ${Field('Conteúdo', Textarea({ id:'i-content', value:i.content, rows:4, placeholder:'O que foi dito / enviado?' }))}
+      <div class="grid grid-cols-2 gap-3">
+        ${Field('Resultado', Select({ id:'i-out', value:i.outcome || '', options:outOpts }))}
+        ${Field('Próximo follow-up', Input({ id:'i-fu', type:'datetime-local', value:i.followUpAt?.slice(0,16) || '' }))}
+      </div>
+    </div>`;
+
+  const footer = `
+    ${!isNew ? Btn({ label:'Excluir', variant:'ghost', cls:'text-destructive mr-auto', onClick:`App.deleteInteraction('${i.id}', '${leadId}')` }) : ''}
+    ${Btn({ label:'Cancelar', variant:'outline', onClick:`App.reopenLead('${leadId}')` })}
+    ${Btn({ label: isNew ? 'Registrar' : 'Salvar', onClick:`App.saveInteraction('${interactionId || ''}', '${leadId}')` })}
+  `;
+
+  openModal({ title: isNew ? 'Registrar interação' : 'Editar interação', bodyHTML: body, footerHTML: footer });
+}
+
+function saveInteraction(interactionId, leadId) {
+  const g = (id) => document.getElementById(id)?.value ?? '';
+  const data = {
+    leadId,
+    direction: g('i-dir'),
+    channel: g('i-ch'),
+    occurredAt: g('i-at') ? new Date(g('i-at')).toISOString() : new Date().toISOString(),
+    content: g('i-content').trim(),
+    outcome: g('i-out') || null,
+    followUpAt: g('i-fu') ? new Date(g('i-fu')).toISOString() : null,
+    followUpDone: false,
+  };
+  if (!data.content) { alert('Descreva a interação.'); return; }
+
+  if (interactionId) {
+    const idx = state.interactions.findIndex(x => x.id === interactionId);
+    const prev = state.interactions[idx];
+    state.interactions[idx] = { ...prev, ...data, followUpDone: prev.followUpDone && prev.followUpAt === data.followUpAt };
+  } else {
+    state.interactions.push({ id: uid(), ...data });
+  }
+
+  // Sugerir atualização de estágio
+  const lead = leadById(leadId);
+  if (lead) {
+    const stage = data.direction === 'OUTBOUND' && lead.stage === 'NOVO' ? 'ABORDADO'
+      : data.direction === 'INBOUND' && ['NOVO','ABORDADO'].includes(lead.stage) ? 'RESPONDEU'
+      : lead.stage;
+    lead.stage = stage;
+    if (data.outcome === 'FECHOU') lead.stage = 'FECHADO';
+    if (data.outcome === 'BLOQUEOU' || data.outcome === 'SEM_INTERESSE') lead.stage = 'PERDIDO';
+  }
+
+  saveState(); openLeadModal(leadId);
+}
+
+function deleteInteraction(id, leadId) {
+  if (!confirm('Excluir esta interação?')) return;
+  state.interactions = state.interactions.filter(i => i.id !== id);
+  saveState(); openLeadModal(leadId);
+}
+
+function reopenLead(leadId) { openLeadModal(leadId); }
+
+function completeFollowUp(id) {
+  const i = state.interactions.find(x => x.id === id);
+  if (i) { i.followUpDone = true; saveState(); render(); }
+}
+
+// ---------- Niche Modal ----------
+function openNicheModal(nicheId) {
+  const isNew = !nicheId;
+  const n = isNew ? { id:'', name:'', color:'#ca8a04' } : state.niches.find(x => x.id === nicheId);
+  const body = `
+    <div class="space-y-4">
+      ${Field('Nome', Input({ id:'n-name', value:n.name, placeholder:'Ex: Odontologia' }))}
+      ${Field('Cor', Input({ id:'n-color', type:'color', value:n.color, cls:'h-10 p-1' }))}
+    </div>`;
+  const footer = `
+    ${Btn({ label:'Cancelar', variant:'outline', onClick:'App.closeModal()' })}
+    ${Btn({ label: isNew ? 'Criar' : 'Salvar', onClick:`App.saveNiche('${nicheId || ''}')` })}
+  `;
+  openModal({ title: isNew ? 'Novo nicho' : 'Editar nicho', bodyHTML: body, footerHTML: footer });
+}
+function saveNiche(id) {
+  const name = document.getElementById('n-name').value.trim();
+  const color = document.getElementById('n-color').value;
+  if (!name) return alert('Informe o nome.');
+  if (id) {
+    const idx = state.niches.findIndex(x => x.id === id);
+    state.niches[idx] = { ...state.niches[idx], name, color };
+  } else {
+    state.niches.push({ id: uid(), name, color });
+  }
+  saveState(); closeModal(); render();
+}
+function deleteNiche(id) {
+  if (state.leads.some(l => l.nicheId === id)) return alert('Existem leads usando este nicho.');
+  if (!confirm('Excluir este nicho?')) return;
+  state.niches = state.niches.filter(n => n.id !== id);
+  saveState(); render();
+}
+
+// ---------- Solution Modal ----------
+function openSolutionModal(solId) {
+  const isNew = !solId;
+  const s = isNew ? { id:'', name:'', defaultPrice:'' } : state.solutions.find(x => x.id === solId);
+  const body = `
+    <div class="space-y-4">
+      ${Field('Nome', Input({ id:'s-name', value:s.name, placeholder:'Ex: Landing page' }))}
+      ${Field('Valor padrão', Input({ id:'s-price', type:'number', value:s.defaultPrice }))}
+    </div>`;
+  const footer = `
+    ${Btn({ label:'Cancelar', variant:'outline', onClick:'App.closeModal()' })}
+    ${Btn({ label: isNew ? 'Criar' : 'Salvar', onClick:`App.saveSolution('${solId || ''}')` })}
+  `;
+  openModal({ title: isNew ? 'Nova solução' : 'Editar solução', bodyHTML: body, footerHTML: footer });
+}
+function saveSolution(id) {
+  const name = document.getElementById('s-name').value.trim();
+  const price = document.getElementById('s-price').value;
+  if (!name) return alert('Informe o nome.');
+  const data = { name, defaultPrice: price ? Number(price) : null };
+  if (id) {
+    const idx = state.solutions.findIndex(x => x.id === id);
+    state.solutions[idx] = { ...state.solutions[idx], ...data };
+  } else {
+    state.solutions.push({ id: uid(), ...data });
+  }
+  saveState(); closeModal(); render();
+}
+function deleteSolution(id) {
+  if (state.leads.some(l => l.solutionTypeId === id)) return alert('Existem leads usando esta solução.');
+  if (!confirm('Excluir esta solução?')) return;
+  state.solutions = state.solutions.filter(s => s.id !== id);
+  saveState(); render();
+}
+
+// ---------- Kanban DnD ----------
+let draggedLeadId = null;
+function onDragStart(e, id) { draggedLeadId = id; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); }
+function onDragEnd(e) { e.currentTarget.classList.remove('dragging'); draggedLeadId = null; }
+function onDrop(e, stageId, el) {
+  e.preventDefault();
+  el.classList.remove('drop-active');
+  if (!draggedLeadId) return;
+  const lead = leadById(draggedLeadId);
+  if (lead && lead.stage !== stageId) {
+    lead.stage = stageId;
+    saveState(); render();
+  }
+}
+
+// ---------- Filters ----------
+function setFilter(key, value) {
+  state.filter[key] = value;
+  saveState();
+  // Re-renderiza só o corpo para não perder foco do input de busca
+  const main = document.querySelector('main');
+  if (main) main.innerHTML = renderView();
+}
+
+// ---------- Router / Render ----------
+function renderView() {
+  switch (state.view) {
+    case 'dashboard':    return renderDashboard();
+    case 'kanban':       return renderKanban();
+    case 'leads':        return renderLeadsTable();
+    case 'interactions': return renderInteractions();
+    case 'followups':    return renderFollowups();
+    case 'settings':     return renderSettings();
+    default:             return renderDashboard();
+  }
+}
+function setView(v) { state.view = v; saveState(); render(); }
+function render() {
+  document.getElementById('app').innerHTML = `
+    <div class="min-h-screen bg-background">
+      ${renderHeader()}
+      <main class="max-w-7xl mx-auto px-4 py-6">${renderView()}</main>
+    </div>`;
+}
+
+function resetData() {
+  if (!confirm('Apagar TODOS os dados e voltar ao estado inicial?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  loadState();
+  render();
+}
+
+window.App = {
+  setView, setFilter,
+  openLeadModal, saveLeadModal, deleteLead, reopenLead,
+  openInteractionModal, saveInteraction, deleteInteraction, completeFollowUp,
+  openNicheModal, saveNiche, deleteNiche,
+  openSolutionModal, saveSolution, deleteSolution,
+  closeModal, resetData,
+  onDragStart, onDragEnd, onDrop,
+};
+
+loadState();
+render();
+</script>
+</body>
+</html>

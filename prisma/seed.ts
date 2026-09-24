@@ -9,17 +9,17 @@ async function main() {
   await prisma.solutionType.deleteMany();
   await prisma.niche.deleteMany();
 
-  // Create niches
+  // Create niches (cores neutras)
   const nicheClinica = await prisma.niche.create({
-    data: { name: 'Clínica', color: '#3b82f6' },
+    data: { name: 'Clínica', color: '#64748b' },
   });
 
   const nicheEstetica = await prisma.niche.create({
-    data: { name: 'Estética', color: '#ec4899' },
+    data: { name: 'Estética', color: '#78909c' },
   });
 
   const nicheOdontologia = await prisma.niche.create({
-    data: { name: 'Odontologia', color: '#10b981' },
+    data: { name: 'Odontologia', color: '#90a4ae' },
   });
 
   // Create solution types
