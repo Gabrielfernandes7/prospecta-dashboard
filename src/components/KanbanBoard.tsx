@@ -83,7 +83,7 @@ function KanbanCard({ lead, isDragging }: { lead: Lead; isDragging: boolean }) {
           )}
 
           <div className="flex items-center gap-1 pt-1">
-            {lead.interactions.length > 0 && (
+            {lead.interactions && lead.interactions.length > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {lead.interactions.length} {lead.interactions.length === 1 ? 'interação' : 'interações'}
               </Badge>
