@@ -16,6 +16,8 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import Link from 'next/link';
 import { updateLead } from '@/app/leads/actions';
 import { Card } from '@/components/ui/card';
@@ -47,16 +49,25 @@ function daysSinceContact(lead: Lead): number | null {
 }
 
 function KanbanCard({ lead, isDragging }: { lead: Lead; isDragging: boolean }) {
+  const { attributes, listeners, setNodeRef, transform } = useSortable({ id: lead.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+  };
+
   const days = daysSinceContact(lead);
   const stageInfo = stageColors[lead.stage] || stageColors.NOVO;
 
   return (
-    <Link href={`/leads/${lead.id}`}>
-      <div
-        className={`p-3 rounded-lg border-2 border-slate-200 bg-white hover:shadow-md transition-all cursor-move ${
-          isDragging ? 'opacity-50 shadow-lg scale-105' : ''
-        }`}
-      >
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`p-3 rounded-lg border-2 border-slate-200 bg-white hover:shadow-md transition-all cursor-grab active:cursor-grabbing group ${
+        isDragging ? 'opacity-50 shadow-lg scale-105 bg-slate-50' : ''
+      }`}
+    >
+      <Link href={`/leads/${lead.id}`} className="block group-hover:opacity-80">
         <div className="space-y-2">
           <div className="flex items-start justify-between gap-2">
             <h4 className="text-sm font-medium text-slate-900 flex-1 line-clamp-2">{lead.name}</h4>
@@ -90,8 +101,8 @@ function KanbanCard({ lead, isDragging }: { lead: Lead; isDragging: boolean }) {
             )}
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 
