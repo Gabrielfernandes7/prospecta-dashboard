@@ -59,7 +59,7 @@ export default function LeadsPage() {
     <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Leads</h1>
-        <p className="text-sm text-slate-600">{leads.length} de {leads.length} leads</p>
+        <p className="text-sm text-slate-600">{leads.length} leads</p>
       </div>
 
       <LeadsTable

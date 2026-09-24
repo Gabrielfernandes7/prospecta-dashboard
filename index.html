@@ -197,7 +197,6 @@ function seed() {
   return { niches, solutions, leads, interactions };
 }
 
-// ---------- State ----------
 const STORAGE_KEY = 'leadcrm_mvp_v1';
 let state;
 
@@ -213,7 +212,6 @@ function loadState() {
 }
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
-// ---------- Lookups ----------
 const nicheById = (id) => state.niches.find(n => n.id === id);
 const solutionById = (id) => state.solutions.find(s => s.id === id);
 const leadById = (id) => state.leads.find(l => l.id === id);
@@ -234,7 +232,6 @@ const pendingFollowUp = (leadId) => {
   return pending[0] || null;
 };
 
-// ---------- Badge / Button primitives ----------
 const Badge = (text, cls = '') => `<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${cls}">${esc(text)}</span>`;
 const stageBadge = (id) => { const s = stageById(id); return Badge(s.label, s.badge); };
 const nicheBadge = (id) => {
@@ -275,7 +272,6 @@ const Card = (inner, cls='') => `<div class="rounded-lg border bg-card text-card
 const CardHeader = (title, desc='') => `<div class="flex flex-col space-y-1 p-5 pb-3"><h3 class="font-semibold leading-none tracking-tight">${esc(title)}</h3>${desc ? `<p class="text-sm text-muted-foreground">${esc(desc)}</p>` : ''}</div>`;
 const CardBody = (inner, cls='') => `<div class="p-5 pt-0 ${cls}">${inner}</div>`;
 
-// ---------- Header / Nav ----------
 function renderHeader() {
   const nav = [
     { id: 'dashboard',    label: 'Dashboard' },
@@ -394,7 +390,6 @@ function renderDashboard() {
     </div>`;
 }
 
-// ---------- Kanban ----------
 function renderKanban() {
   const cols = STAGES.map(s => {
     const items = state.leads.filter(l => l.stage === s.id);
@@ -558,7 +553,6 @@ function renderInteractions() {
     </div>`;
 }
 
-// ---------- Follow-ups ----------
 function renderFollowups() {
   const today = new Date(); today.setHours(0,0,0,0);
   const pending = state.interactions
@@ -653,7 +647,6 @@ function renderSettings() {
     </div>`;
 }
 
-// ---------- Modal infra ----------
 function openModal({ title, bodyHTML, footerHTML = '', size = 'max-w-lg' }) {
   const root = document.getElementById('modal-root');
   root.innerHTML = `
@@ -672,7 +665,6 @@ function openModal({ title, bodyHTML, footerHTML = '', size = 'max-w-lg' }) {
 }
 function closeModal() { document.getElementById('modal-root').innerHTML = ''; }
 
-// ---------- Lead Modal ----------
 function openLeadModal(leadId) {
   const isNew = !leadId;
   const l = isNew ? {
