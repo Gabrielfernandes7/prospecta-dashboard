@@ -106,7 +106,7 @@ export default function InteractionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[99999] bg-black/50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <div className="w-full max-w-lg bg-white rounded-lg border border-slate-200 shadow-lg my-4">
         <div className="flex items-center justify-between p-5 border-b border-slate-200">
           <h2 className="text-base font-semibold text-slate-900">
