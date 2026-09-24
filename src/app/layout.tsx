@@ -1,12 +1,6 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
 import { RootContent } from "./root-content";
-
-const geist = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Prospecta — CRM de Prospecção",
@@ -15,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${geist.variable} h-full antialiased light`} suppressHydrationWarning>
+    <html lang="pt-BR" className="h-full antialiased light" suppressHydrationWarning>
       <body className="h-full bg-white text-slate-900">
         <RootContent>{children}</RootContent>
       </body>
