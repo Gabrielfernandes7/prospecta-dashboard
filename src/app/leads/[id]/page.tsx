@@ -151,18 +151,9 @@ export default function LeadDetailPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">{lead.name}</h1>
-                <p className="text-sm text-slate-600 mt-1">ID: {lead.id}</p>
-              </div>
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 flex-shrink-0"
-              >
-                <Edit2 className="w-4 h-4" />
-                Editar
-              </button>
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">{lead.name}</h1>
+              <p className="text-sm text-slate-600 mt-1">ID: {lead.id}</p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
