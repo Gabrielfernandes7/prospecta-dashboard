@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import LeadModal from './LeadModal';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -14,6 +16,19 @@ const navItems = [
 
 export default function Header() {
   const pathname = usePathname();
+  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
+  const [niches, setNiches] = useState<any[]>([]);
+  const [solutions, setSolutions] = useState<any[]>([]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/niches').then(r => r.json()),
+      fetch('/api/solutions').then(r => r.json()),
+    ]).then(([n, s]) => {
+      setNiches(Array.isArray(n) ? n : []);
+      setSolutions(Array.isArray(s) ? s : []);
+    });
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur dark:bg-slate-900/95 dark:border-slate-700">
@@ -45,11 +60,27 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button className="h-9 px-4 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200">
+          <button
+            onClick={() => setIsNewLeadModalOpen(true)}
+            className="h-9 px-4 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+          >
             + Novo lead
           </button>
         </div>
       </div>
+
+      {isNewLeadModalOpen && (
+        <LeadModal
+          leadId={null}
+          niches={niches}
+          solutions={solutions}
+          onSuccess={() => {
+            setIsNewLeadModalOpen(false);
+            window.location.reload();
+          }}
+          onClose={() => setIsNewLeadModalOpen(false)}
+        />
+      )}
     </header>
   );
 }

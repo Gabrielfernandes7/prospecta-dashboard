@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import LeadsTable from '@/components/LeadsTable';
-import LeadModal from '@/components/LeadModal';
 import { Niche, SolutionType } from '@prisma/client';
 
 interface LeadWithRelations {
@@ -31,7 +30,6 @@ export default function LeadsPage() {
   const [solutions, setSolutions] = useState<SolutionType[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ search: '', niche: '', stage: '', solution: '' });
-  const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -59,17 +57,9 @@ export default function LeadsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Leads</h1>
-          <p className="text-sm text-slate-600">{leads.length} leads</p>
-        </div>
-        <button
-          onClick={() => setIsNewLeadModalOpen(true)}
-          className="h-10 px-4 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
-        >
-          + Novo Lead
-        </button>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Leads</h1>
+        <p className="text-sm text-slate-600">{leads.length} leads</p>
       </div>
 
       <LeadsTable
@@ -81,19 +71,6 @@ export default function LeadsPage() {
         onFiltersChange={setFilters}
         onLeadsChange={(updatedLeads: any) => setLeads(updatedLeads)}
       />
-
-      {isNewLeadModalOpen && (
-        <LeadModal
-          leadId={null}
-          niches={niches}
-          solutions={solutions}
-          onSuccess={(newLead: any) => {
-            setLeads([...leads, newLead]);
-            setIsNewLeadModalOpen(false);
-          }}
-          onClose={() => setIsNewLeadModalOpen(false)}
-        />
-      )}
     </div>
   );
 }

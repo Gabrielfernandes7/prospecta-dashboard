@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import KanbanBoard from '@/components/KanbanBoard';
+import KanbanBoardVertical from '@/components/KanbanBoardVertical';
 
 type Lead = any;
 
@@ -34,9 +34,7 @@ export default function KanbanPage() {
           <p className="text-slate-600">Carregando...</p>
         </div>
       ) : (
-        <div className="overflow-hidden">
-          <KanbanBoard leads={leads} onLeadsChange={setLeads} />
-        </div>
+        <KanbanBoardVertical leads={leads} onLeadsChange={setLeads} />
       )}
     </div>
   );
