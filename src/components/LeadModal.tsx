@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Niche, SolutionType } from '@prisma/client';
 import { createLead, updateLead, deleteLead, getLead } from '@/app/leads/actions';
 import InteractionsTimeline from './InteractionsTimeline';
+import { Portal } from './Portal';
 
 const STAGES = ['NOVO', 'ABORDADO', 'RESPONDEU', 'NEGOCIANDO', 'FECHADO', 'PERDIDO'];
 const SOURCES = ['INSTAGRAM', 'GOOGLE_MAPS', 'INDICACAO', 'OUTRO'];
@@ -116,9 +117,10 @@ export default function LeadModal({ leadId, niches, solutions, onSuccess, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-2xl bg-white rounded-lg border border-slate-200 shadow-lg my-4">
-        <div className="flex items-center justify-between p-5 border-b border-slate-200">
+    <Portal>
+      <div className="fixed inset-0 z-[999999] bg-black/50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
+        <div className="w-full max-w-2xl bg-white rounded-lg border border-slate-200 shadow-lg my-4">
+          <div className="flex items-center justify-between p-5 border-b border-slate-200">
           <h2 className="text-base font-semibold text-slate-900">
             {leadId ? name || 'Lead' : 'Novo lead'}
           </h2>
@@ -301,7 +303,13 @@ export default function LeadModal({ leadId, niches, solutions, onSuccess, onClos
               leadId={leadId}
               interactions={interactions}
               onInteractionAdded={(newInteraction: any) => {
-                setInteractions([newInteraction, ...interactions]);
+                setInteractions(prev => {
+                  const exists = prev.some(i => i.id === newInteraction.id);
+                  if (exists) {
+                    return prev.map(i => i.id === newInteraction.id ? newInteraction : i);
+                  }
+                  return [newInteraction, ...prev];
+                });
                 setStage(newInteraction.lead?.stage || stage);
               }}
             />
@@ -338,5 +346,6 @@ export default function LeadModal({ leadId, niches, solutions, onSuccess, onClos
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

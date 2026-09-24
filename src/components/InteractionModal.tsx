@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createInteraction, updateInteraction, deleteInteraction, getInteraction } from '@/app/interacoes/actions';
+import { Portal } from './Portal';
 
 const DIRECTIONS = ['OUTBOUND', 'INBOUND'];
 const CHANNELS = [
@@ -106,9 +107,10 @@ export default function InteractionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-lg bg-white rounded-lg border border-slate-200 shadow-lg my-4">
-        <div className="flex items-center justify-between p-5 border-b border-slate-200">
+    <Portal>
+      <div className="fixed inset-0 z-[999999] bg-black/50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
+        <div className="w-full max-w-lg bg-white rounded-lg border border-slate-200 shadow-lg my-4">
+          <div className="flex items-center justify-between p-5 border-b border-slate-200">
           <h2 className="text-base font-semibold text-slate-900">
             {interactionId ? 'Editar interação' : 'Registrar interação'}
           </h2>
@@ -123,7 +125,7 @@ export default function InteractionModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5 max-h-[72vh] overflow-y-auto">
+        <div className="space-y-4 p-5 max-h-[72vh] overflow-y-auto">
           {error && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-700 border border-red-200">
               {error}
@@ -205,7 +207,7 @@ export default function InteractionModal({
               />
             </div>
           </div>
-        </form>
+        </div>
 
         <div className="p-5 border-t border-slate-200 flex justify-between">
           <div>
@@ -237,5 +239,6 @@ export default function InteractionModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

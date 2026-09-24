@@ -71,6 +71,7 @@ export async function updateInteraction(id: string, data: unknown) {
     });
     return { success: true, data: interaction };
   } catch (error) {
+    console.error('Error updating interaction:', error);
     return { success: false, error: 'Erro ao atualizar interação' };
   }
 }

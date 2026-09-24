@@ -75,10 +75,10 @@ export const InteractionSchema = z.object({
   leadId: z.string().min(1, 'Lead é obrigatório'),
   direction: InteractionDirectionEnum,
   channel: InteractionChannelEnum,
-  occurredAt: z.date(),
+  occurredAt: z.coerce.date(),
   content: z.string().min(1, 'Conteúdo é obrigatório'),
   outcome: InteractionOutcomeEnum.nullable().optional(),
-  followUpAt: z.date().nullable().optional(),
+  followUpAt: z.coerce.date().nullable().optional(),
   followUpDone: z.boolean().default(false),
 });
 export const CreateInteractionSchema = InteractionSchema.omit({ id: true });
