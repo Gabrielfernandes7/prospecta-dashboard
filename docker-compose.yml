@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    container_name: prospecta-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/prisma.db
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

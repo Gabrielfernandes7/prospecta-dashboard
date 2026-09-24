@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Niche {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String
+
+  leads Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SolutionType {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  defaultPrice Float?
+  description  String?
+
+  leads Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Lead {
+  id              String  @id @default(cuid())
+  name            String
+  instagramUrl    String?
+  googleMapsUrl   String?
+  source          String @default("INSTAGRAM")
+  nicheId         String
+  solutionTypeId  String?
+  stage           String @default("NOVO")
+  proposedValue   Float?
+  soldValue       Float?
+  soldAt          DateTime?
+  lostReason      String?
+  notes           String?
+
+  niche           Niche         @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  solutionType    SolutionType? @relation(fields: [solutionTypeId], references: [id], onDelete: SetNull)
+  interactions    Interaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Interaction {
+  id           String  @id @default(cuid())
+  leadId       String
+  direction    String @default("OUTBOUND")
+  channel      String @default("INSTAGRAM_DM")
+  occurredAt   DateTime
+  content      String
+  outcome      String?
+  followUpAt   DateTime?
+  followUpDone Boolean @default(false)
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
